@@ -1,0 +1,6 @@
+{
+  "name": "Vinshu Beauty N Clothing Brand",
+  "description": "A high-end, vibrant, and customer-friendly digital boutique offering luxury apparel and skincare for the entire family.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

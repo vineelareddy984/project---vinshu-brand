@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  
+  --color-pink-brand: #FF4F8B;
+  --color-peach-brand: #FFB38A;
+  --color-gold-brand: #D4AF37;
+  --color-lavender-brand: #C8A2FF;
+  --color-mint-brand: #6EE7B7;
+  --color-bg-brand: #FFFDFB;
+  --color-text-dark: #333333;
+
+  /* Custom animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(3deg); }
+  }
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; transform: scale(1.02); }
+  }
+
+  --animate-float: float 8s ease-in-out infinite;
+  --animate-pulse-slow: pulse-slow 4s ease-in-out infinite;
+}
+
+/* Custom background patterns for beauty brand */
+.bg-pastel-pink {
+  background-color: #FFF0F3;
+}
+.bg-pastel-cream {
+  background-color: #FFFDF9;
+}
+.bg-pastel-lavender {
+  background-color: #F8F5FF;
+}
+.bg-pastel-mint {
+  background-color: #F2FCF8;
+}
+
+/* Base style resets */
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text-dark);
+  background-color: var(--color-bg-brand);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom glow effects */
+.glow-peach {
+  box-shadow: 0 10px 30px -5px rgba(255, 179, 138, 0.35);
+}
+.glow-pink {
+  box-shadow: 0 10px 30px -5px rgba(255, 79, 139, 0.35);
+}
+.glow-gold {
+  box-shadow: 0 10px 25px -5px rgba(212, 175, 55, 0.25);
+}
