@@ -5,7 +5,7 @@ export const IMAGES = {
   heroBanner: 'https://files.catbox.moe/x1u36m.jpg',
   cosmeticsHero: 'https://files.catbox.moe/zoxoiy.jpg',
   fashionHero: 'https://files.catbox.moe/fzwuhg.jpg',
-  familyBrand: '/src/assets/images/family_brand_1781080680355.png',
+  familyBrand: 'https://files.catbox.moe/l5gofz.jpg',
   lipstickTint: '/src/assets/images/lipstick_tint_1781081319860.png',
   lotusCream: '/src/assets/images/lotus_cream_1781081334866.png',
   georgetteFrock: '/src/assets/images/georgette_frock_1781081350941.png',
