@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "booking": {
+      "title": "Booking",
+      "description": "Virtual styling or specialist slot bookings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userPhone": { "type": "string" },
+        "specialNotes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "serviceId", "serviceName", "date", "time", "userName", "userEmail", "createdAt"]
+    },
+    "order": {
+      "title": "Order",
+      "description": "Completed clothing and cosmetics customer orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "shippingAddress": { "type": "string" },
+        "shippingCity": { "type": "string" },
+        "shippingPincode": { "type": "string" },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "orderStatus": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userName", "shippingAddress", "shippingCity", "shippingPincode", "items", "totalAmount", "paymentMethod", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/bookings/{bookingId}": {
+      "schema": "booking",
+      "description": "List of booked specialist appointments"
+    },
+    "/orders/{orderId}": {
+      "schema": "order",
+      "description": "Customer purchase order registry"
+    }
+  }
+}

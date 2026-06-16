@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Catch-All Master Gate
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global helper primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Bookings collection security and validation
+    match /bookings/{bookingId} {
+      allow get: if true; 
+      allow list: if false; 
+      
+      allow create: if isValidId(bookingId) && 
+        isValidBooking(request.resource.data);
+      
+      allow update, delete: if false; 
+    }
+    
+    function isValidBooking(data) {
+      return data.keys().hasAll(['id', 'serviceId', 'serviceName', 'date', 'time', 'userName', 'userEmail', 'createdAt']) &&
+        data.keys().size() <= 10 &&
+        data.id is string && data.id.size() <= 128 &&
+        data.serviceId is string && data.serviceId.size() <= 128 &&
+        data.serviceName is string && data.serviceName.size() <= 200 &&
+        data.date is string && data.date.size() <= 32 &&
+        data.time is string && data.time.size() <= 32 &&
+        data.userName is string && data.userName.size() <= 256 &&
+        data.userEmail is string && data.userEmail.size() <= 256 &&
+        data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // Orders collection security and validation
+    match /orders/{orderId} {
+      allow get: if true; 
+      allow list: if false; 
+
+      allow create: if isValidId(orderId) &&
+        isValidOrder(request.resource.data);
+
+      allow update, delete: if false; 
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['id', 'userName', 'shippingAddress', 'shippingCity', 'shippingPincode', 'items', 'totalAmount', 'paymentMethod', 'createdAt']) &&
+        data.keys().size() <= 13 &&
+        data.id is string && data.id.size() <= 128 &&
+        data.userName is string && data.userName.size() <= 256 &&
+        data.shippingAddress is string && data.shippingAddress.size() <= 512 &&
+        data.shippingCity is string && data.shippingCity.size() <= 128 &&
+        data.shippingPincode is string && data.shippingPincode.size() <= 32 &&
+        data.items is list && data.items.size() <= 100 &&
+        data.totalAmount is number &&
+        data.paymentMethod is string && data.paymentMethod.size() <= 64 &&
+        data.createdAt is string && data.createdAt.size() <= 64;
+    }
+  }
+}
