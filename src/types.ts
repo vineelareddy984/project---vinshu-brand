@@ -4,8 +4,11 @@ export interface Product {
   category: 'cosmetics' | 'clothing';
   type: string; // e.g., "Skincare", "Makeup", "Leisurewear", "Festive", "Kids Activewear", "Elegant Cashmere"
   price: number;
+  originalPrice?: number; // Slashed price like Flipkart
   rating: number;
   reviewsCount: number;
+  stockCount?: number; // Stock count alerts
+  vinshuAssured?: boolean; // Flipkart Assured equivalent badge
   description: string;
   image: string;
   badge?: 'New' | 'Bestseller' | 'Limited Edition' | 'Eco Friendly';

@@ -23,21 +23,44 @@ export default function CartDrawer({
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number } | null>(null);
   
-  // Checkout flow state
-  const [checkoutStep, setCheckoutStep] = useState<'cart' | 'shipping' | 'tracking'>('cart');
+  // Checkout flow state (Cart -> Shipping -> Payment -> Success Tracking)
+  const [checkoutStep, setCheckoutStep] = useState<'cart' | 'shipping' | 'payment' | 'tracking'>('cart');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
   const [buyerName, setBuyerName] = useState('');
   const [orderId, setOrderId] = useState('');
 
+  // Flipkart Interactive Payment details
+  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'cod' | 'netbanking'>('upi');
+  const [selectedUpiApp, setSelectedUpiApp] = useState<'phonepe' | 'gpay' | 'paytm' | 'other'>('phonepe');
+  const [upiId, setUpiId] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [cardHolder, setCardHolder] = useState('');
+  
+  // Anti-bot security captcha for Cash On Delivery (Flipkart Trademark style!)
+  const [codCaptcha, setCodCaptcha] = useState(() => String(Math.floor(Math.random() * 900) + 100)); // Random 3-digit code
+  const [codCaptchaInput, setCodCaptchaInput] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   if (!isOpen) return null;
 
-  // Calculators
+  // Flipkart accurate pricing calculators
+  const totalMrp = cart.reduce((total, item) => {
+    const origPrice = item.product.originalPrice || item.product.price;
+    return total + origPrice * item.quantity;
+  }, 0);
+
   const subtotal = cart.reduce((total, item) => total + item.product.price * item.quantity, 0);
-  const discountAmount = appliedPromo ? (subtotal * appliedPromo.discount) / 100 : 0;
+  const mrpDiscount = totalMrp - subtotal;
+  const couponDiscount = appliedPromo ? (subtotal * appliedPromo.discount) / 100 : 0;
+  
   const deliveryFee = subtotal > 75 || subtotal === 0 ? 0 : 5.99;
-  const grandTotal = subtotal - discountAmount + deliveryFee;
+  const packagingFee = subtotal === 0 ? 0 : 1.99; // Secured Flipkart Packaging Fee
+  const grandTotal = subtotal - couponDiscount + deliveryFee + packagingFee;
+  const totalSavings = mrpDiscount + couponDiscount;
 
   const handleApplyPromo = () => {
     const matched = PROMO_CODES.find(p => p.code.toUpperCase() === promoCode.trim().toUpperCase());
@@ -57,14 +80,51 @@ export default function CartDrawer({
     setCheckoutStep('shipping');
   };
 
-  const handleCompleteOrder = (e: React.FormEvent) => {
+  const handleNextToPayment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!buyerName || !address || !city) {
+    if (!buyerName || !address || !city || !postalCode) {
       alert("💐 Please fill out essential shipping coordinates!");
       return;
     }
+    // Set a random order ID now
     setOrderId(`VN-${Math.floor(Math.random() * 900000) + 100000}`);
-    setCheckoutStep('tracking');
+    setCheckoutStep('payment');
+  };
+
+  const handleCompletePayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate inputs depending on method
+    if (paymentMethod === 'upi') {
+      if (selectedUpiApp === 'other' && !upiId.includes('@')) {
+        alert("💐 Please enter a valid UPI ID (e.g. name@upi) to authenticate connection.");
+        return;
+      }
+    } else if (paymentMethod === 'card') {
+      if (cardNumber.replace(/\s/g, '').length < 15) {
+        alert("💐 Please enter a valid Card Number.");
+        return;
+      }
+      if (!cardExpiry || cardCvv.length < 3) {
+        alert("💐 Please provide your Card Pin / CVV credentials.");
+        return;
+      }
+    } else if (paymentMethod === 'cod') {
+      if (codCaptchaInput !== codCaptcha) {
+        alert("❌ Captcha code mismatch. Please enter the exact 3-digit code to place Cash on Delivery order.");
+        setCodCaptcha(String(Math.floor(Math.random() * 900) + 100)); // Refresh captcha
+        setCodCaptchaInput('');
+        return;
+      }
+    }
+
+    setIsProcessingPayment(true);
+    
+    // Simulate beautiful Flipkart payment processing animation
+    setTimeout(() => {
+      setIsProcessingPayment(false);
+      setCheckoutStep('tracking');
+    }, 1500);
   };
 
   const handleCloseAndReset = () => {
@@ -75,6 +135,16 @@ export default function CartDrawer({
     setCity('');
     setPostalCode('');
     setBuyerName('');
+    
+    // Clear payment details
+    setPaymentMethod('upi');
+    setUpiId('');
+    setCardNumber('');
+    setCardExpiry('');
+    setCardCvv('');
+    setCodCaptchaInput('');
+    setCodCaptcha(String(Math.floor(Math.random() * 900) + 100));
+    
     onClose();
   };
 
@@ -165,9 +235,16 @@ export default function CartDrawer({
                           </div>
 
                           <div className="flex justify-between items-center mt-2.5">
-                            <span className="font-display font-black text-xs sm:text-sm text-gray-800">
-                              ${(item.product.price * item.quantity).toFixed(2)}
-                            </span>
+                            <div className="text-left">
+                              <span className="font-display font-black text-xs sm:text-sm text-gray-805 block">
+                                ${(item.product.price * item.quantity).toFixed(2)}
+                              </span>
+                              {item.product.originalPrice && (
+                                <span className="text-[10px] text-gray-400 line-through">
+                                  ${(item.product.originalPrice * item.quantity).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
                             
                             {/* Quantity buttons */}
                             <div className="flex items-center gap-1.5 bg-white border border-pink-100 rounded-full px-2 py-0.5 select-none">
@@ -191,8 +268,8 @@ export default function CartDrawer({
                     ))}
                   </div>
 
-                  {/* Summary Block */}
-                  <div className="bg-neutral-50/90 border-t border-pink-100 p-6 space-y-4">
+                  {/* Flipkart Styled "PRICE DETAILS" Summary Block */}
+                  <div className="bg-neutral-50 border-t border-pink-100 p-5 space-y-4">
                     {/* Promo Codes */}
                     <div className="space-y-1.5 text-left">
                       <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider flex items-center gap-1">
@@ -223,41 +300,78 @@ export default function CartDrawer({
                       )}
                     </div>
 
-                    {/* Pricing Grid */}
-                    <div className="space-y-2 text-xs font-medium text-gray-600">
-                      <div className="flex justify-between">
-                        <span>Items Subtotal</span>
-                        <span className="font-bold text-gray-900">${subtotal.toFixed(2)}</span>
+                    {/* Flipkart Style "PRICE DETAILS" Container */}
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 text-left">
+                      <h3 className="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase border-b border-gray-100 pb-2 mb-3">
+                        Price Details ({cart.reduce((s, i) => s + i.quantity, 0)} Items)
+                      </h3>
+                      
+                      <div className="space-y-2 text-xs text-gray-600 font-medium">
+                        <div className="flex justify-between">
+                          <span>Total MRP (Regular Value)</span>
+                          <span className="text-gray-800 font-bold">${totalMrp.toFixed(2)}</span>
+                        </div>
+                        
+                        {mrpDiscount > 0 && (
+                          <div className="flex justify-between text-emerald-600 font-bold">
+                            <span>Boutique Catalog Discount</span>
+                            <span>-${mrpDiscount.toFixed(2)}</span>
+                          </div>
+                        )}
+                        
+                        {appliedPromo && (
+                          <div className="flex justify-between text-emerald-600 font-bold">
+                            <span>Instant Coupon Savings</span>
+                            <span>-${couponDiscount.toFixed(2)}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between">
+                          <span>Secured Packaging & Dispatch Fee</span>
+                          <span className="text-gray-800 font-bold">${packagingFee.toFixed(2)}</span>
+                        </div>
+
+                        <div className="flex justify-between">
+                          <span>Delivery Charges</span>
+                          <span>
+                            {deliveryFee === 0 ? (
+                              <span className="text-emerald-600 font-bold">
+                                <span className="line-through text-gray-400 mr-1">$5.99</span> FREE Delivery
+                              </span>
+                            ) : (
+                              <span className="text-gray-800 font-bold">${deliveryFee.toFixed(2)}</span>
+                            )}
+                          </span>
+                        </div>
+
+                        {subtotal < 75 && (
+                          <div className="bg-pink-50/50 p-2 rounded-lg text-[10px] text-pink-700 font-medium leading-normal mt-2 border border-pink-100/50">
+                            💡 Purchase <strong>${(75 - subtotal).toFixed(2)}</strong> more to get <strong>FREE DELIVERY</strong>!
+                          </div>
+                        )}
+
+                        {/* Flipkart Total Amount */}
+                        <div className="flex justify-between text-sm font-black text-gray-850 border-t border-gray-150 pt-3 mt-3">
+                          <span>Total Amount Payable</span>
+                          <span className="text-pink-brand font-display font-extrabold text-base">${grandTotal.toFixed(2)}</span>
+                        </div>
                       </div>
-                      {appliedPromo && (
-                        <div className="flex justify-between text-emerald-600">
-                          <span>Promo Coupon Discount</span>
-                          <span>-${discountAmount.toFixed(2)}</span>
+
+                      {/* Flipkart Green Savings Banner */}
+                      {totalSavings > 0 && (
+                        <div className="mt-3.5 bg-emerald-50 text-emerald-700 text-[11px] font-black p-2.5 rounded-xl border border-emerald-100 flex items-center gap-1.5 leading-snug">
+                          <Check className="w-4 h-4 shrink-0 bg-emerald-600 text-white rounded-full p-0.5" />
+                          <span>Hurrah! You will save <strong>${totalSavings.toFixed(2)}</strong> on this order.</span>
                         </div>
                       )}
-                      <div className="flex justify-between">
-                        <span>Delivery & Ribbon Packaging</span>
-                        <span className="font-bold text-gray-900">
-                          {deliveryFee === 0 ? <strong className="text-emerald-600">Complimentary</strong> : `$${deliveryFee}`}
-                        </span>
-                      </div>
-                      {subtotal < 75 && (
-                        <p className="text-[10px] text-pink-500 italic text-left">
-                          Add <strong>${(75 - subtotal).toFixed(2)}</strong> more to unlock Free Boutique Shipping!
-                        </p>
-                      )}
-                      <div className="flex justify-between text-sm font-black text-gray-800 border-t border-pink-100 pt-2">
-                        <span>Grand Styling Value</span>
-                        <span className="text-pink-brand font-display font-extrabold text-base">${grandTotal.toFixed(2)}</span>
-                      </div>
                     </div>
 
-                    {/* Submit checkout */}
+                    {/* Proceed CTA */}
                     <button
                       onClick={handleNextToShipping}
-                      className="w-full py-4 bg-gradient-to-r from-pink-brand via-pink-400 to-peach-brand text-white font-display text-sm font-bold rounded-full shadow-md hover:scale-[1.01] transition-transform cursor-pointer flex items-center justify-center gap-2 glow-pink"
+                      className="w-full py-3.5 bg-gradient-to-r from-pink-brand via-pink-400 to-peach-brand text-white font-display text-sm font-bold rounded-full shadow-md hover:scale-[1.01] transition-transform cursor-pointer flex items-center justify-center gap-2 glow-pink"
                     >
-                      <span>Proceed to Shipping Delivery</span>
+                      <span>Proceed to Shipping Address</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -268,7 +382,7 @@ export default function CartDrawer({
 
           {/* CHECKOUT STEP 2: SHIPPING FORMS */}
           {checkoutStep === 'shipping' && (
-            <form onSubmit={handleCompleteOrder} className="flex-grow flex flex-col justify-between overflow-hidden p-6 text-left">
+            <form onSubmit={handleNextToPayment} className="flex-grow flex flex-col justify-between overflow-hidden p-6 text-left">
               <div className="space-y-4 flex-grow overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-pink-50 pb-3 mb-4">
                   <h3 className="font-display font-extrabold text-base text-gray-800">Secure Delivery Registry</h3>
@@ -355,9 +469,280 @@ export default function CartDrawer({
                   type="submit"
                   className="flex-grow py-3 bg-gradient-to-r from-pink-brand to-peach-brand text-white font-display text-xs font-bold rounded-full shadow-md text-center cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <span>Transmit Secure Checkout (${grandTotal.toFixed(2)})</span>
+                  <span>Continue to Payment (${grandTotal.toFixed(2)})</span>
                 </button>
               </div>
+            </form>
+          )}
+
+          {/* CHECKOUT STEP 2.5: FLIPKART STYLE PAYMENT OPTIONS ACCORDION */}
+          {checkoutStep === 'payment' && (
+            <form onSubmit={handleCompletePayment} className="flex-grow flex flex-col justify-between overflow-hidden text-left bg-neutral-50">
+              {isProcessingPayment ? (
+                <div className="flex-grow flex flex-col justify-center items-center p-6 text-center">
+                  <div className="w-12 h-12 border-4 border-pink-200 border-t-pink-brand rounded-full animate-spin mb-4" />
+                  <h3 className="font-display font-extrabold text-base text-gray-805">Processing Secure Payment</h3>
+                  <p className="text-gray-500 text-xs mt-1 max-w-xs leading-relaxed">
+                    Connecting to billing systems, generating packing slips, and locking in your promo discounts...
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="p-5 space-y-4 flex-grow overflow-y-auto">
+                    {/* Header summary of shipping */}
+                    <div className="bg-white p-3.5 rounded-2xl border border-gray-100 flex items-center justify-between text-xs font-medium">
+                      <div>
+                        <span className="text-[10px] text-gray-400 block uppercase font-bold">Deliver To</span>
+                        <span className="text-gray-700 font-extrabold">{buyerName}</span>
+                        <span className="text-gray-500 max-w-xs block truncate">{address}, {city}</span>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setCheckoutStep('shipping')}
+                        className="text-[11px] font-extrabold text-pink-brand underline shrink-0 hover:text-pink-600 ml-2 cursor-pointer"
+                      >
+                        Change
+                      </button>
+                    </div>
+
+                    <h3 className="text-[11px] font-extrabold text-gray-450 tracking-wider uppercase pl-1">
+                      Choose Payment Method
+                    </h3>
+
+                    {/* Method List Accordion block */}
+                    <div className="space-y-2.5">
+                      
+                      {/* UPI Option */}
+                      <div className={`p-4 rounded-2xl bg-white border transition-all ${paymentMethod === 'upi' ? 'border-pink-300 ring-1 ring-pink-100 shadow-xs' : 'border-gray-150'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name="pay_method"
+                            checked={paymentMethod === 'upi'}
+                            onChange={() => setPaymentMethod('upi')}
+                            className="text-pink-brand focus:ring-pink-400 w-4 h-4 accent-pink-brand"
+                          />
+                          <div>
+                            <span className="text-xs font-extrabold text-gray-800 block">UPI (PhonePe / Google Pay / Paytm)</span>
+                            <span className="text-[11px] text-gray-500 font-medium">Instant automated redirection checkout</span>
+                          </div>
+                        </label>
+
+                        {paymentMethod === 'upi' && (
+                          <div className="pl-7 mt-3 space-y-2.5 pt-2.5 border-t border-dashed border-gray-100 text-left">
+                            <span className="text-[10px] font-bold text-gray-500 block">Select Preferred Application:</span>
+                            <div className="grid grid-cols-2 gap-2">
+                              {/* PhonePe */}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedUpiApp('phonepe')}
+                                className={`p-2 rounded-xl text-left border text-xs font-bold transition-all ${selectedUpiApp === 'phonepe' ? 'bg-pink-50 border-pink-300 text-pink-700' : 'bg-gray-50/70 border-gray-200'}`}
+                              >
+                                💜 PhonePe
+                              </button>
+                              
+                              {/* Google Pay */}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedUpiApp('gpay')}
+                                className={`p-2 rounded-xl text-left border text-xs font-bold transition-all ${selectedUpiApp === 'gpay' ? 'bg-pink-50 border-pink-300 text-pink-700' : 'bg-gray-50/70 border-gray-200'}`}
+                              >
+                                💙 Google Pay
+                              </button>
+
+                              {/* Paytm */}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedUpiApp('paytm')}
+                                className={`p-2 rounded-xl text-left border text-xs font-bold transition-all ${selectedUpiApp === 'paytm' ? 'bg-pink-50 border-pink-300 text-pink-700' : 'bg-gray-50/70 border-gray-200'}`}
+                              >
+                                💚 Paytm App
+                              </button>
+
+                              {/* Other UPI */}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedUpiApp('other')}
+                                className={`p-2 rounded-xl text-left border text-xs font-bold transition-all ${selectedUpiApp === 'other' ? 'bg-pink-50 border-pink-300 text-pink-700' : 'bg-gray-50/70 border-gray-200'}`}
+                              >
+                                ⚙ Other UPI id
+                              </button>
+                            </div>
+
+                            {selectedUpiApp === 'other' && (
+                              <div className="mt-2.5 animate-fade-in">
+                                <input
+                                  type="text"
+                                  placeholder="Enter Virtual Address (e.g. name@paytm)"
+                                  value={upiId}
+                                  onChange={(e) => setUpiId(e.target.value)}
+                                  className="w-full bg-neutral-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-pink-brand text-gray-700 font-mono font-bold"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Credit Card Option */}
+                      <div className={`p-4 rounded-2xl bg-white border transition-all ${paymentMethod === 'card' ? 'border-pink-300 ring-1 ring-pink-100 shadow-xs' : 'border-gray-150'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name="pay_method"
+                            checked={paymentMethod === 'card'}
+                            onChange={() => setPaymentMethod('card')}
+                            className="text-pink-brand focus:ring-pink-400 w-4 h-4 accent-pink-brand"
+                          />
+                          <div>
+                            <span className="text-xs font-extrabold text-gray-800 block">Credit / Debit / ATM Card</span>
+                            <span className="text-[11px] text-gray-500 font-medium">Safe 256-bit SSL secure payment portal</span>
+                          </div>
+                        </label>
+
+                        {paymentMethod === 'card' && (
+                          <div className="pl-7 mt-3 space-y-3 pt-2.5 border-t border-dashed border-gray-100 transition-all">
+                            <div>
+                              <label className="text-[10px] text-gray-400 font-bold block mb-1">Card Holder Name</label>
+                              <input
+                                type="text"
+                                placeholder="E.g. Shanaya Roy"
+                                value={cardHolder}
+                                onChange={(e) => setCardHolder(e.target.value)}
+                                className="w-full bg-neutral-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-pink-brand text-gray-700"
+                                required={paymentMethod === 'card'}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-400 font-bold block mb-1">16-Digit Card Number</label>
+                              <input
+                                type="text"
+                                placeholder="4321 4455 1122 9988"
+                                maxLength={19}
+                                value={cardNumber}
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/\D/g, '');
+                                  val = val.match(/.{1,4}/g)?.join(' ') || val;
+                                  setCardNumber(val);
+                                }}
+                                className="w-full bg-neutral-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-pink-brand text-gray-700 font-mono font-bold tracking-wider"
+                                required={paymentMethod === 'card'}
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2.5">
+                              <div>
+                                <label className="text-[10px] text-gray-400 font-bold block mb-1">Expiry Date</label>
+                                <input
+                                  type="text"
+                                  placeholder="MM/YY"
+                                  maxLength={5}
+                                  value={cardExpiry}
+                                  onChange={(e) => {
+                                    let val = e.target.value.replace(/\D/g, '');
+                                    if (val.length > 2) {
+                                      val = val.substring(0, 2) + '/' + val.substring(2, 4);
+                                    }
+                                    setCardExpiry(val);
+                                  }}
+                                  className="w-full bg-neutral-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-pink-brand text-gray-700 font-mono font-bold"
+                                  required={paymentMethod === 'card'}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-400 font-bold block mb-1">CVV Pin</label>
+                                <input
+                                  type="password"
+                                  placeholder="***"
+                                  maxLength={3}
+                                  value={cardCvv}
+                                  onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
+                                  className="w-full bg-neutral-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-pink-brand text-gray-700 font-mono font-bold"
+                                  required={paymentMethod === 'card'}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Cash On Delivery (COD) (with CAPTCHA challenge) */}
+                      <div className={`p-4 rounded-2xl bg-white border transition-all ${paymentMethod === 'cod' ? 'border-pink-300 ring-1 ring-pink-100 shadow-xs' : 'border-gray-150'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name="pay_method"
+                            checked={paymentMethod === 'cod'}
+                            onChange={() => setPaymentMethod('cod')}
+                            className="text-pink-brand focus:ring-pink-400 w-4 h-4 accent-pink-brand"
+                          />
+                          <div>
+                            <span className="text-xs font-extrabold text-gray-800 block">Cash on Delivery (COD)</span>
+                            <span className="text-[11px] text-gray-500 font-medium">Verify image captcha to place parcel</span>
+                          </div>
+                        </label>
+
+                        {paymentMethod === 'cod' && (
+                          <div className="pl-7 mt-3.5 pt-3 border-t border-dashed border-gray-100 space-y-3">
+                            <span className="text-[10px] font-black text-rose-500 block leading-tight">
+                              ⚠️ Safe Guard Block: Enter the 3-digit verification CAPTCHA below to place COD Booking.
+                            </span>
+                            
+                            {/* Captcha representation boxes */}
+                            <div className="flex items-center gap-2">
+                              <div className="bg-gradient-to-r from-zinc-800 to-zinc-950 text-white font-mono text-base font-black px-4 py-1.5 rounded-lg tracking-[0.25em] select-none shadow-inner border border-zinc-700 italic flex items-center justify-center relative overflow-hidden">
+                                <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.15)_50%,transparent_75%)] animate-pulse" />
+                                {codCaptcha}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setCodCaptcha(String(Math.floor(Math.random() * 900) + 100))}
+                                className="text-[10px] font-bold text-pink-brand hover:underline"
+                                title="Refresh captcha image"
+                              >
+                                ⟳ Refresh
+                              </button>
+                            </div>
+
+                            <input
+                              type="text"
+                              maxLength={3}
+                              placeholder="Enter the 3 digits above"
+                              value={codCaptchaInput}
+                              onChange={(e) => setCodCaptchaInput(e.target.value.replace(/\D/g, ''))}
+                              className="bg-neutral-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs w-full max-w-[200px] focus:outline-none focus:border-pink-brand font-mono font-bold text-center tracking-widest text-gray-850"
+                              required={paymentMethod === 'cod'}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Simple summary at bottom of list */}
+                    <div className="p-3 bg-white rounded-xl border border-gray-100 flex justify-between text-xs font-medium">
+                      <span className="text-gray-500">Payable Value</span>
+                      <span className="text-pink-brand font-extrabold">${grandTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Submission row */}
+                  <div className="bg-white border-t border-pink-100 p-4 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutStep('shipping')}
+                      className="px-6 py-3 border border-pink-200 text-gray-600 rounded-full text-xs font-bold bg-white cursor-pointer"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-grow py-3 bg-gradient-to-r from-pink-brand via-pink-400 to-peach-brand text-white font-display text-xs font-extrabold rounded-full shadow-md text-center cursor-pointer transition-all hover:scale-101 active:scale-99 inline-flex items-center justify-center gap-1.5"
+                    >
+                      <span>CONFIRM ORDER & PAY</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </form>
           )}
 

@@ -17,6 +17,10 @@ export default function ProductSection({ onAddToCart }: ProductSectionProps) {
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   
+  // Flipkart Pincode check state
+  const [pincode, setPincode] = useState('');
+  const [pincodeStatus, setPincodeStatus] = useState<string | null>(null);
+  
   // Simple favorites / heart wishlist simulation
   const [wishlist, setWishlist] = useState<string[]>([]);
   
@@ -47,6 +51,24 @@ export default function ProductSection({ onAddToCart }: ProductSectionProps) {
     setActiveQuickView(product);
     setSelectedSize(product.sizes ? product.sizes[0] : '');
     setSelectedColor(product.colors ? product.colors[0] : '');
+    setPincode('');
+    setPincodeStatus(null);
+  };
+
+  const handleCheckPincode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pincode || pincode.trim().length !== 6) {
+      setPincodeStatus("❌ Please enter active 6-digit postal pin-code.");
+      return;
+    }
+    const digitSum = pincode.split('').reduce((sum, d) => sum + (parseInt(d, 10) || 0), 0);
+    if (digitSum % 3 === 0) {
+      setPincodeStatus("⚡ Super Saver Express: Free 1-Day Premium Delivery is active! Cash on Delivery (COD) enabled.");
+    } else if (digitSum % 2 === 0) {
+      setPincodeStatus("🚚 Vinshu Handloom Dispatch: Standard Free Delivery in 2-3 Days. Free COD active.");
+    } else {
+      setPincodeStatus("📦 Premium Velvet Box Delivery: Delivery in 4-5 Luxury Days. Secured prepaid dispatch.");
+    }
   };
 
   return (
@@ -177,24 +199,52 @@ export default function ProductSection({ onAddToCart }: ProductSectionProps) {
                       <span className="text-pink-brand/80 font-display uppercase tracking-wider">{prod.type}</span>
                       <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-medium">{prod.familyDemographic}</span>
                     </div>
-                    <h3 className="font-display font-bold text-gray-800 text-sm line-clamp-1 group-hover:text-pink-brand transition-colors">
-                      {prod.name}
-                    </h3>
+                    
+                    {/* Title + Assured tag row */}
+                    <div className="flex items-start justify-between gap-1 mt-0.5">
+                      <h3 className="font-display font-bold text-gray-800 text-sm line-clamp-1 group-hover:text-pink-brand transition-colors flex-grow text-left">
+                        {prod.name}
+                      </h3>
+                      {prod.vinshuAssured && (
+                        <span className="inline-flex items-center gap-0.5 bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded-sm text-[9px] font-black tracking-tight border border-blue-100 shrink-0">
+                          <span className="text-[8px] bg-blue-600 text-white font-extrabold px-0.5 rounded-sm">V</span> Assured
+                        </span>
+                      )}
+                    </div>
                     
                     {/* Rating display */}
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <div className="flex text-amber-400">
+                      <div className="flex text-amber-400 shrink-0">
                         <Star className="w-3.5 h-3.5 fill-current" />
                       </div>
                       <span className="text-xs font-bold text-gray-700">{prod.rating}</span>
                       <span className="text-[10px] text-gray-400">({prod.reviewsCount} reviews)</span>
                     </div>
+
+                    {/* Stock Alert block */}
+                    {prod.stockCount !== undefined && prod.stockCount <= 5 ? (
+                      <span className="text-[10px] text-rose-600 font-extrabold block text-left mt-1.5 animate-pulse">
+                        🔥 Hurry, only {prod.stockCount} left in stock!
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-emerald-600 font-medium block text-left mt-1.5">✓ Instock & ready to dispatch</span>
+                    )}
                   </div>
 
-                  <div className="pt-4 mt-3 border-t border-dashed border-pink-100 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-gray-400 text-left block">Price</span>
-                      <span className="font-display font-extrabold text-base text-gray-800">${prod.price.toFixed(2)}</span>
+                  <div className="pt-3 mt-3 border-t border-dashed border-pink-100 flex items-center justify-between">
+                    <div className="text-left">
+                      <span className="text-[10px] text-gray-400 block">Offer Price</span>
+                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <span className="font-display font-extrabold text-base text-gray-850">${prod.price.toFixed(2)}</span>
+                        {prod.originalPrice && (
+                          <>
+                            <span className="text-xs text-gray-400 line-through font-medium">${prod.originalPrice.toFixed(2)}</span>
+                            <span className="text-[10px] text-emerald-600 font-extrabold">
+                              {Math.round(((prod.originalPrice - prod.price) / prod.originalPrice) * 100)}% Off
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={() => selectQuickviewItem(prod)}
@@ -325,18 +375,36 @@ export default function ProductSection({ onAddToCart }: ProductSectionProps) {
                         <span className="text-pink-brand/80 font-display uppercase tracking-widest">{prod.type}</span>
                         <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-medium">{prod.familyDemographic}</span>
                       </div>
-                      <h3 className="font-display font-bold text-gray-800 text-sm line-clamp-1 group-hover:text-pink-brand transition-colors text-left">
-                        {prod.name}
-                      </h3>
+                      
+                      {/* Title + Assured tag row */}
+                      <div className="flex items-start justify-between gap-1 mt-0.5">
+                        <h3 className="font-display font-bold text-gray-800 text-sm line-clamp-1 group-hover:text-pink-brand transition-colors text-left flex-grow">
+                          {prod.name}
+                        </h3>
+                        {prod.vinshuAssured && (
+                          <span className="inline-flex items-center gap-0.5 bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded-sm text-[8px] font-black tracking-tight border border-blue-100 shrink-0">
+                            <span className="text-[7px] bg-blue-600 text-white font-extrabold px-0.5 rounded-sm">V</span> Assured
+                          </span>
+                        )}
+                      </div>
                       
                       {/* Rating block */}
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <div className="flex text-amber-400">
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <div className="flex text-amber-400 shrink-0">
                           <Star className="w-3.5 h-3.5 fill-current" />
                         </div>
                         <span className="text-xs font-bold text-gray-700">{prod.rating}</span>
                         <span className="text-[10px] text-gray-400">({prod.reviewsCount} reviews)</span>
                       </div>
+
+                      {/* Stock availability banner */}
+                      {prod.stockCount !== undefined && prod.stockCount <= 5 ? (
+                        <span className="text-[10px] lg:text-[11px] text-rose-600 font-extrabold block text-left mt-1.5 animate-pulse">
+                          🔥 Only {prod.stockCount} left in stock!
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-600 font-medium block text-left mt-1.5">✓ Ready at Warehouse</span>
+                      )}
 
                       <p className="text-gray-500 text-xs mt-2 line-clamp-2 text-left">
                         {prod.description}
@@ -345,14 +413,24 @@ export default function ProductSection({ onAddToCart }: ProductSectionProps) {
 
                     <div className="pt-4 mt-4 border-t border-pink-50 flex items-center justify-between">
                       <div className="text-left">
-                        <span className="text-[9px] text-gray-400 block">Pricing</span>
-                        <span className="font-display font-extrabold text-base text-gray-800">${prod.price.toFixed(2)}</span>
+                        <span className="text-[9px] text-gray-400 block">Offer Price</span>
+                        <div className="flex items-baseline gap-1 flex-wrap">
+                          <span className="font-display font-black text-sm sm:text-base text-gray-850">${prod.price.toFixed(2)}</span>
+                          {prod.originalPrice && (
+                            <>
+                              <span className="text-[10px] text-gray-400 line-through">${prod.originalPrice.toFixed(2)}</span>
+                              <span className="text-[9px] text-emerald-600 font-black">
+                                {Math.round(((prod.originalPrice - prod.price) / prod.originalPrice) * 100)}% Off
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => selectQuickviewItem(prod)}
-                          className="bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-gray-600 px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                          className="bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-gray-600 px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                         >
                           Details
                         </button>
@@ -482,6 +560,37 @@ export default function ProductSection({ onAddToCart }: ProductSectionProps) {
                       </div>
                     </div>
                   )}
+
+                  {/* Flipkart Styled Pincode Checker */}
+                  <div className="mt-5 pt-4 border-t border-dashed border-gray-150">
+                    <span className="text-xs font-bold text-gray-750 block mb-1.5">Check Delivery Pin Code:</span>
+                    <div className="flex gap-2 max-w-sm">
+                      <input
+                        type="text"
+                        placeholder="Enter 6-digit Pincode (e.g. 500001)"
+                        maxLength={6}
+                        value={pincode}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setPincode(val);
+                          setPincodeStatus(null);
+                        }}
+                        className="bg-neutral-50 border border-gray-200 focus:outline-none focus:border-pink-brand rounded-xl py-2 px-3 text-xs w-full text-gray-800 tracking-wider font-mono font-bold"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCheckPincode}
+                        className="bg-gray-800 hover:bg-pink-brand text-white text-xs font-bold px-4 py-2 rounded-xl cursor-pointer select-none transition-colors"
+                      >
+                        Check
+                      </button>
+                    </div>
+                    {pincodeStatus && (
+                      <p className={`text-[11px] font-bold mt-2 text-left p-2.5 rounded-lg border leading-tight ${pincodeStatus.startsWith('❌') ? 'text-red-500 bg-red-50 border-red-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'}`}>
+                        {pincodeStatus}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="pt-6 mt-6 border-t border-pink-50 flex items-center justify-between">
